@@ -1,0 +1,42 @@
+﻿<Window x:Class="WpfApp1.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:WpfApp1"
+        mc:Ignorable="d"
+        Title="REVIN - SPT FIKA Server Monitor v0.0.9" Height="884" Width="1401" Topmost="True" Background="#FF545454">
+    <Grid Background="#FF545454" Width="1381" Height="848" HorizontalAlignment="Center" VerticalAlignment="Center">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition/>
+        </Grid.ColumnDefinitions>
+        <Button x:Name="StartButton" Content="START Server" Margin="974,511,0,0" Click="StartButton_Click" Background="#FFC7C2C2" Width="172" Height="56" HorizontalAlignment="Left" VerticalAlignment="Top" FontSize="24" FontFamily="Bahnschrift Condensed"/>
+        <TextBox x:Name="pathTextBox" HorizontalAlignment="Left" Margin="798,447,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="335" TextChanged="TextBox_TextChanged" Height="18"/>
+        <Button x:Name="Browse1" Content="Browse" HorizontalAlignment="Left" Margin="1063,470,0,0" VerticalAlignment="Top" Click="Browse1_Click" Height="26" Width="70"/>
+        <Label Content="Locate Server EXE" HorizontalAlignment="Left" Margin="794,423,0,0" VerticalAlignment="Top" Width="111" Height="24"/>
+        <Rectangle HorizontalAlignment="Left" Height="750" Stroke="Black" VerticalAlignment="Top" Width="503" Margin="212,16,0,0"/>
+        <Rectangle HorizontalAlignment="Left" Height="88" Margin="786,418,0,0" Stroke="Black" VerticalAlignment="Top" Width="360"/>
+        <Rectangle HorizontalAlignment="Left" Height="375" Margin="744,16,0,0" Stroke="Black" VerticalAlignment="Top" Width="444"/>
+        <TextBlock HorizontalAlignment="Left" Margin="212,-6,0,0" TextWrapping="Wrap" Text="FIKA Server Output CLI" VerticalAlignment="Top" Width="165" Foreground="White" Height="22" FontSize="16"/>
+        <TextBlock HorizontalAlignment="Left" Margin="744,-6,0,0" TextWrapping="Wrap" Text="Performance Monitor" VerticalAlignment="Top" Width="171" Foreground="White" Height="21" FontSize="16"/>
+        <Border x:Name="Border1" BorderBrush="Black" BorderThickness="1" Margin="212,16,0,0" Width="503" Height="750" HorizontalAlignment="Left" VerticalAlignment="Top">
+            <TextBox x:Name="consoleOutput1" TextWrapping="Wrap" Background="#FF232222" Foreground="#FFC5C4C4" FontFamily="Calibri Light" Text="" Width="506" Height="754" HorizontalAlignment="Left" VerticalAlignment="Center" RenderTransformOrigin="0.5,0.5" Margin="-1,0,0,0" FontSize="16">
+                <TextBox.RenderTransform>
+                    <TransformGroup>
+                        <ScaleTransform/>
+                        <SkewTransform AngleY="-0.05"/>
+                        <RotateTransform/>
+                        <TranslateTransform Y="-0.749"/>
+                    </TransformGroup>
+                </TextBox.RenderTransform>
+            </TextBox>
+        </Border>
+        <Border x:Name="Border2" BorderBrush="Black" BorderThickness="1" Margin="744,16,0,0" Width="444" Height="375" HorizontalAlignment="Left" VerticalAlignment="Top">
+            <TextBox x:Name="consoleOutput2" TextWrapping="Wrap" Background="#FF232121" Foreground="#FFC8C4C4" Margin="-1,-1,-1,-1"/>
+        </Border>
+        <Button x:Name="StopButton" Content="STOP Server" Margin="974,572,0,0" Click="StopButton_Click" Background="#FFC7C2C2" Width="172" Height="56" HorizontalAlignment="Left" VerticalAlignment="Top" FontSize="24" FontFamily="Bahnschrift Condensed"/>
+        <Image x:Name="amogus" HorizontalAlignment="Left" Height="92" VerticalAlignment="Top" Width="120" Source="/Among-Us-Svg.png" Opacity="0.085" Margin="212,674,0,0"/>
+        <TextBlock HorizontalAlignment="Left" Margin="309,766,0,0" TextWrapping="Wrap" Text="ALPHA BUILD v0.0.9" VerticalAlignment="Top" Height="82" Width="323" FontSize="36"/>
+
+    </Grid>
+</Window>
