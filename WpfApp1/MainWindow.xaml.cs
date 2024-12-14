@@ -1,28 +1,17 @@
 ﻿using System;
 using System.Diagnostics;
 using System.IO;
-using System.Text.RegularExpressions;
-using System.Windows;
-using System.Windows.Controls;
-using System.Threading.Tasks;
-using System.Timers;
 using System.Linq;
 using System.Net.NetworkInformation;
-using System.Collections.ObjectModel;
+using System.Text.RegularExpressions;
+using System.Threading.Tasks;
+using System.Timers;
+using System.Windows;
+using System.Windows.Controls;
 using Microsoft.Win32;
-using REVIN_SPT_FIKA_Server_Monitor.Properties;
 using System.Management.Automation;
 using System.Management.Automation.Runspaces;
-using System.ComponentModel;
-
-// This program was written by, and is owned by, Revin.
-// This program and/or code is not to be tampered with, copied, or redistributed by any means necessary.
-// If this code is found in any of the listed above then legal action will be taken.
-// If a bug is found please find me in the Project Fika Discord and discuss it there. Do not attempt to fix it!
-// This program is solely for use by the SPT FIKA Community and this program is to be free of use with the above exceptions.
-// If you paid for this program you were scammed.
-// Project Fika Discord: https://discord.gg/project-fika
-// Program written and distributed by Revin, 2024.
+using RSM_Server_Monitor.Properties;
 
 namespace WpfApp1
 {
@@ -41,37 +30,29 @@ namespace WpfApp1
         {
             InitializeComponent();
             LoadLastPath();
-            UpdateServerStatusDisplay(); // Line 43 fixed by moving method below
-            SetupPerformanceCounters();
-            SetupPingTimer();
-            this.Topmost = false; // Ensure the window does not stay on top
-            StartMonitoring(); // Start monitoring immediately
+            SetupCountersAndTimers();
+            this.Topmost = false;
+            StartMonitoring();
+            UpdateServerStatusDisplay();
         }
 
         private void LoadLastPath()
         {
-            string? lastPath = Settings.Default.LastPath;
-            if (!string.IsNullOrWhiteSpace(lastPath) && File.Exists(lastPath))
-            {
-                pathTextBox.Text = lastPath;
-            }
+            string lastPath = Settings.Default.LastPath;
+            pathTextBox.Text = File.Exists(lastPath)
+                ? lastPath
+                : Path.Combine(Directory.GetParent(Directory.GetCurrentDirectory())?.FullName ?? "", "SPT.Server.exe");
         }
 
-        private void SaveLastPath()
-        {
-            Settings.Default.LastPath = pathTextBox.Text;
-            Settings.Default.Save();
-        }
-
-        private void SetupPerformanceCounters()
+        private void SetupCountersAndTimers()
         {
             cpuCounter = new PerformanceCounter("Process", "% Processor Time", "SPT.Server", true);
             ramCounter = new PerformanceCounter("Process", "Working Set", "SPT.Server", true);
-        }
 
-        private void SetupPingTimer()
-        {
-            pingTimer = new System.Timers.Timer(10000); // Ping every 10 seconds
+            monitorTimer = new System.Timers.Timer(1000);
+            monitorTimer.Elapsed += MonitorServer;
+
+            pingTimer = new System.Timers.Timer(10000);
             pingTimer.Elapsed += PingServer;
         }
 
@@ -88,13 +69,11 @@ namespace WpfApp1
             }
         }
 
-        private void StopButton_Click(object sender, RoutedEventArgs e)
+        private async void StopButton_Click(object sender, RoutedEventArgs e)
         {
-            MessageBoxResult result = MessageBox.Show("Are you sure that you want to terminate the server?", "Confirm Termination", MessageBoxButton.YesNo, MessageBoxImage.Question);
-            if (result == MessageBoxResult.Yes)
+            if (MessageBox.Show("Are you sure you want to terminate the server?", "Confirm Termination", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
             {
-                StopCLIApplication();
-                UpdateServerStatusDisplay(); // Line 96 fixed by moving method below
+                await StopCLIApplication();
             }
         }
 
@@ -114,66 +93,68 @@ namespace WpfApp1
 
         private void StartCLIApplication()
         {
+            if (cliProcess != null && !cliProcess.HasExited)
+            {
+                MessageBox.Show("A process is already running. Please stop it first.");
+                return;
+            }
+
+            string exePath = pathTextBox.Text;
+            string exeDirectory = Path.GetDirectoryName(exePath) ?? "";
+
+            if (!Directory.Exists(Path.Combine(exeDirectory, "SPT_Data", "Server", "configs")))
+            {
+                MessageBox.Show("The configuration directory for SPT Server does not exist. Please check your installation.");
+                return;
+            }
+
+            cliProcess = new Process
+            {
+                StartInfo = new ProcessStartInfo
+                {
+                    FileName = exePath,
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    CreateNoWindow = true,
+                    WorkingDirectory = exeDirectory
+                }
+            };
+
             try
             {
-                if (cliProcess != null && !cliProcess.HasExited)
-                {
-                    MessageBox.Show("A process is already running. Please stop it first.");
-                    return;
-                }
-
-                cliProcess = new Process
-                {
-                    StartInfo = new ProcessStartInfo
-                    {
-                        FileName = pathTextBox.Text,
-                        UseShellExecute = false,
-                        RedirectStandardOutput = true,
-                        RedirectStandardError = true,
-                        CreateNoWindow = true
-                    }
-                };
-
                 cliProcess.Start();
-
-                if (!cliProcess.HasExited)
-                {
-                    cliProcess.OutputDataReceived += CliProcess_OutputDataReceived;
-                    cliProcess.ErrorDataReceived += CliProcess_ErrorDataReceived;
-                    cliProcess.EnableRaisingEvents = true;
-                    cliProcess.Exited += CliProcess_Exited;
-
-                    cliProcess.BeginOutputReadLine();
-                    cliProcess.BeginErrorReadLine();
-                    SetupPerformanceCounters(); // Reinitialize counters for the new process
-                    pingTimer?.Start();
-                }
-                else
-                {
-                    throw new Exception("Process started but immediately exited.");
-                }
-
-                UpdateServerStatusDisplay(); // Line 155 fixed by moving method below
+                SetupProcessEvents();
+                pingTimer?.Start();
+                UpdateServerStatusDisplay();
             }
             catch (Exception ex)
             {
                 MessageBox.Show($"Failed to start the CLI application: {ex.Message}");
                 cliProcess = null;
-                UpdateServerStatusDisplay(); // Line 161 fixed by moving method below
+                UpdateServerStatusDisplay();
             }
+        }
+
+        private void SetupProcessEvents()
+        {
+            cliProcess!.OutputDataReceived += CliProcess_OutputDataReceived;
+            cliProcess!.ErrorDataReceived += CliProcess_ErrorDataReceived;
+            cliProcess!.EnableRaisingEvents = true;
+            cliProcess!.Exited += CliProcess_Exited;
+            cliProcess!.BeginOutputReadLine();
+            cliProcess!.BeginErrorReadLine();
         }
 
         private void CliProcess_OutputDataReceived(object sender, DataReceivedEventArgs e)
         {
-            if (e.Data != null)
+            if (e.Data is not null)
             {
                 Dispatcher.Invoke(() =>
                 {
                     if (this.FindName("consoleOutput1") is TextBox textBox)
                     {
-                        string cleanOutput = Regex.Replace(e.Data, @"\x1B\[[0-?]*[ -/]*[@-~]", "");
-                        cleanOutput = cleanOutput.Replace("€", "").Replace("â", "").Replace("”", "");
-                        textBox.AppendText(cleanOutput + Environment.NewLine);
+                        textBox.AppendText(SanitizeOutput(e.Data) + Environment.NewLine);
                         textBox.ScrollToEnd();
                     }
                 });
@@ -182,22 +163,25 @@ namespace WpfApp1
 
         private void CliProcess_ErrorDataReceived(object sender, DataReceivedEventArgs e)
         {
-            if (e.Data != null)
+            if (e.Data is not null)
             {
                 Dispatcher.Invoke(() =>
                 {
                     if (this.FindName("consoleOutput1") is TextBox textBox)
                     {
-                        string cleanOutput = Regex.Replace(e.Data, @"\x1B\[[0-?]*[ -/]*[@-~]", "");
-                        cleanOutput = cleanOutput.Replace("€", "").Replace("â", "").Replace("”", "");
-                        textBox.AppendText("Error: " + cleanOutput + Environment.NewLine);
+                        textBox.AppendText($"Error: {SanitizeOutput(e.Data)}" + Environment.NewLine);
                         textBox.ScrollToEnd();
                     }
                 });
             }
         }
 
-        private async void StopCLIApplication()
+        private string SanitizeOutput(string output)
+        {
+            return Regex.Replace(output, @"\x1B\[[0-?]*[ -/]*[@-~]", "").Replace("€", "").Replace("â", "").Replace("”", "");
+        }
+
+        private async Task StopCLIApplication()
         {
             if (cliProcess != null && !cliProcess.HasExited)
             {
@@ -217,78 +201,50 @@ namespace WpfApp1
             {
                 MessageBox.Show("No CLI application is running to stop.");
             }
-            CleanupResources(); // Ensure cleanup after stopping the CLI process
         }
 
         private void CliProcess_Exited(object? sender, EventArgs e)
         {
             Dispatcher.Invoke(() =>
             {
-                if (cliProcess != null)
-                {
-                    cliProcess = null;
-                    successfulPackets = 0;
-                    failedPackets = 0;
-                    serverStatusMessage = "The SPT-Fika Server has crashed and will be restarted. Please check your mods for any conflicts.";
-                    UpdateServerStatusDisplay(); // Line 231 fixed by moving method below
-                }
+                cliProcess = null;
+                successfulPackets = failedPackets = 0;
+                serverStatusMessage = "The SPT-Fika Server has crashed and will be restarted. Please check your mods for any conflicts.";
+                UpdateServerStatusDisplay();
             });
         }
 
-        private Task WaitForExitAsync(Process process)
-        {
-            return Task.Run(() => process.WaitForExit());
-        }
+        private Task WaitForExitAsync(Process process) => Task.Run(() => process.WaitForExit());
 
-        private void StartMonitoring()
-        {
-            if (monitorTimer == null)
-            {
-                monitorTimer = new System.Timers.Timer(1000); // Check every 1 second for performance metrics
-                monitorTimer.Elapsed += MonitorServer;
-            }
-            monitorTimer.Enabled = true;
-        }
+        private void StartMonitoring() => monitorTimer?.Start();
 
-        private void MonitorServer(object? sender, ElapsedEventArgs e)
+        private void MonitorServer(object sender, ElapsedEventArgs e)
         {
             Dispatcher.Invoke(() =>
             {
-                string metrics = "";
-                float cpu = 0;
-                double ramUsage = 0;
+                if (cliProcess == null || cliProcess.HasExited || cpuCounter == null || ramCounter == null) return;
 
-                if (cliProcess != null && !cliProcess.HasExited)
-                {
-                    if (cpuCounter != null && ramCounter != null)
-                    {
-                        // CPU usage calculation
-                        cpu = cpuCounter.NextValue() / Environment.ProcessorCount;
+                float cpu = cpuCounter.NextValue() / Environment.ProcessorCount;
+                float ram = ramCounter.NextValue();
+                double ramUsage = (ram / (Environment.WorkingSet * 1024.0)) * 100;
 
-                        // RAM usage calculation
-                        float ram = ramCounter.NextValue();
-                        ramUsage = (ram / (Environment.WorkingSet * 1024.0)) * 100; // Convert bytes to KB for comparison
-                    }
-                }
+                string metrics = $"CPU Usage: {cpu:F2}%\nRAM Usage: {Math.Min(ramUsage, 100):F2}%\nNet Usage: {cpu:F2}%\n\nSuccessful Packets Sent: {successfulPackets}\nFailed Packets: {failedPackets}";
 
-                // Update the metrics, showing 0 if the server isn't running
-                metrics = $"CPU Usage: {cpu:F2}%\nRAM Usage: {Math.Min(ramUsage, 100):F2}%\nNet Usage: {cpu:F2}%\n\nSuccessful Packets Sent: {successfulPackets}\nFailed Packets: {failedPackets}";
-
-                Task.Run(async () =>
+                _ = Task.Run(async () =>
                 {
                     string webResponse = await GetWebResponseAsync();
                     metrics += "\n==========\n" + webResponse;
-                    Dispatcher.Invoke(() => UpdateServerStatusDisplay(metrics)); // Line 279 fixed by moving method below
+                    Dispatcher.Invoke(() => UpdateServerStatusDisplay(metrics));
                 });
             });
         }
 
-        private void PingServer(object? sender, ElapsedEventArgs e)
+        private void PingServer(object sender, ElapsedEventArgs e)
         {
             if (cliProcess != null && !cliProcess.HasExited)
             {
-                Ping pingSender = new Ping();
-                PingReply reply = pingSender.Send("8.8.8.8", 1000); // Timeout set to 1 second
+                var pingSender = new Ping();
+                var reply = pingSender.Send("8.8.8.8", 1000);
                 if (reply.Status == IPStatus.Success)
                 {
                     successfulPackets++;
@@ -318,7 +274,7 @@ namespace WpfApp1
                             var errors = ps.Streams.Error.ReadAll();
                             return $"Error fetching data: {string.Join(", ", errors.Select(e => e.Exception.Message))}";
                         }
-                        return results[0].BaseObject.ToString();
+                        return results[0]?.BaseObject?.ToString() ?? "No response received";
                     }
                 }
             }
@@ -334,50 +290,22 @@ namespace WpfApp1
             {
                 if (this.FindName("consoleOutput2") is TextBox textBox)
                 {
-                    textBox.Clear();
-                    string statusMessage = serverStatusMessage;
-                    if (string.IsNullOrEmpty(statusMessage))
-                    {
-                        statusMessage = cliProcess == null || cliProcess.HasExited
-                            ? "The SPT-Fika Server is not running."
-                            : "The SPT-Fika Server is currently running.";
-                    }
-                    else
-                    {
-                        serverStatusMessage = ""; // Clear the message after display
-                    }
-                    textBox.Text = statusMessage + "\n\n" + metrics;
+                    textBox.Text = (cliProcess == null || cliProcess.HasExited ? "The SPT-Fika Server is not running." : "The SPT-Fika Server is currently running.")
+                                    + "\n\n" + metrics;
                 }
             });
         }
 
+        private void SaveLastPath() => Settings.Default.LastPath = pathTextBox.Text;
+
+        private void consoleOutput1_TextChanged(object sender, TextChangedEventArgs e)
+        {
+
+        }
+
         private void TextBox_TextChanged(object sender, TextChangedEventArgs e)
         {
-            // Additional logic for path changes.
-        }
 
-        private void CleanupResources()
-        {
-            monitorTimer?.Stop();
-            monitorTimer?.Dispose();
-            pingTimer?.Stop();
-            pingTimer?.Dispose();
-            cpuCounter?.Dispose();
-            ramCounter?.Dispose();
-        }
-
-        protected override void OnClosing(CancelEventArgs e)
-        {
-            base.OnClosing(e);
-
-            // Stop the CLI process if it's running
-            if (cliProcess != null && !cliProcess.HasExited)
-            {
-                StopCLIApplication();
-            }
-
-            // Clean up resources
-            CleanupResources();
         }
     }
 }
