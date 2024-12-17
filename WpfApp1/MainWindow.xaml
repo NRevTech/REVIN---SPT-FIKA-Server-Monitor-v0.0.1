@@ -5,38 +5,89 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:WpfApp1"
         mc:Ignorable="d"
-        Title="RSM Server Monitor" Height="884" Width="1027" Topmost="True" Background="#FF545454" HorizontalAlignment="Center" VerticalAlignment="Center">
-    <Grid Background="#FF545454" Width="1026" Height="854" HorizontalAlignment="Center" VerticalAlignment="Center">
+        Title="R-SM Server Manager - Project Fika" Height="887" Width="1282" Topmost="True" HorizontalAlignment="Center" VerticalAlignment="Center">
+    <Window.Foreground>
+        <ImageBrush/>
+    </Window.Foreground>
+    <Window.Background>
+        <ImageBrush ImageSource="/R-SM SERVER MONITOR.png"/>
+    </Window.Background>
+    <Grid Width="1262" Height="839" HorizontalAlignment="Center" VerticalAlignment="Center">
         <Grid.ColumnDefinitions>
             <ColumnDefinition/>
         </Grid.ColumnDefinitions>
-        <Button x:Name="StartButton" Content="START Server" Margin="789,531,0,0" Click="StartButton_Click" Background="#FFC7C2C2" Width="172" Height="56" HorizontalAlignment="Left" VerticalAlignment="Top" FontSize="24" FontFamily="Bahnschrift Condensed"/>
-        <TextBox x:Name="pathTextBox" HorizontalAlignment="Left" Margin="613,467,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="336" TextChanged="TextBox_TextChanged" Height="18"/>
-        <Button x:Name="Browse1" Content="Browse" HorizontalAlignment="Left" Margin="879,490,0,0" VerticalAlignment="Top" Click="Browse1_Click" Height="26" Width="70"/>
-        <Label Content="Locate Server EXE" HorizontalAlignment="Left" Margin="609,443,0,0" VerticalAlignment="Top" Width="112" Height="24"/>
-        <Rectangle HorizontalAlignment="Left" Height="750" Stroke="Black" VerticalAlignment="Top" Width="504" Margin="27,36,0,0"/>
-        <Rectangle HorizontalAlignment="Left" Height="88" Margin="601,438,0,0" Stroke="Black" VerticalAlignment="Top" Width="360"/>
-        <Rectangle HorizontalAlignment="Left" Height="375" Margin="559,36,0,0" Stroke="Black" VerticalAlignment="Top" Width="444"/>
-        <TextBlock HorizontalAlignment="Left" Margin="27,14,0,0" TextWrapping="Wrap" Text="FIKA Server Output CLI" VerticalAlignment="Top" Width="166" Foreground="White" Height="22" FontSize="16"/>
-        <TextBlock HorizontalAlignment="Left" Margin="559,14,0,0" TextWrapping="Wrap" Text="Performance Monitor" VerticalAlignment="Top" Width="172" Foreground="White" Height="21" FontSize="16"/>
-        <Border x:Name="Border1" BorderBrush="Black" BorderThickness="1" Margin="27,36,0,0" Width="504" Height="750" HorizontalAlignment="Left" VerticalAlignment="Top">
-            <TextBox x:Name="consoleOutput1" TextWrapping="Wrap" Background="#FF232222" Foreground="#FFC5C4C4" FontFamily="Calibri Light" Text="" Width="505" Height="749" HorizontalAlignment="Center" VerticalAlignment="Center" RenderTransformOrigin="0.5,0.5" FontSize="16" TextChanged="consoleOutput1_TextChanged">
-                <TextBox.RenderTransform>
-                    <TransformGroup>
-                        <ScaleTransform/>
-                        <SkewTransform AngleY="-0.05"/>
-                        <RotateTransform/>
-                        <TranslateTransform Y="-0.749"/>
-                    </TransformGroup>
-                </TextBox.RenderTransform>
-            </TextBox>
+        <Button x:Name="StartButton" Margin="541,792,0,0" Click="StartButton_Click" Width="112" Height="34" HorizontalAlignment="Left" VerticalAlignment="Top" FontSize="16" FontFamily="Bahnschrift Light Condensed" BorderBrush="#FF5AFF00">
+            <Button.Effect>
+                <DropShadowEffect/>
+            </Button.Effect>
+            <Button.Background>
+                <ImageBrush ImageSource="/START BUTTON.png" Stretch="Fill" TileMode="None"/>
+            </Button.Background>
+        </Button>
+        <Rectangle HorizontalAlignment="Left" Height="658" Margin="538,27,0,0" Stroke="White" VerticalAlignment="Top" Width="366" Fill="#FF232222"/>
+        <Rectangle HorizontalAlignment="Left" Height="88" Margin="541,696,0,0" Stroke="White" VerticalAlignment="Top" Width="360" Fill="Black" Opacity="0.685"/>
+        <TextBox x:Name="pathTextBox" HorizontalAlignment="Left" Margin="553,720,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="336" TextChanged="TextBox_TextChanged" Height="18"/>
+        <Button x:Name="Browse1" Content="BROWSE" HorizontalAlignment="Left" Margin="819,744,0,0" VerticalAlignment="Top" Click="Browse1_Click" Height="26" Width="70" BorderBrush="#FF292828" Background="#FFA0A0A0" FontFamily="Bahnschrift Light SemiCondensed"/>
+        <Label Content="LOCATE SERVER .EXE" HorizontalAlignment="Left" Margin="548,700,0,0" VerticalAlignment="Top" Width="112" Height="24" Foreground="White" FontFamily="Bahnschrift Light SemiCondensed"/>
+        <Rectangle HorizontalAlignment="Left" Height="658" Stroke="Black" VerticalAlignment="Top" Width="504" Margin="15,27,0,0"/>
+        <TextBlock HorizontalAlignment="Left" Margin="15,6,0,0" TextWrapping="Wrap" Text="FIKA Server Output - CLI" VerticalAlignment="Top" Width="166" Foreground="White" Height="17" FontSize="16" FontFamily="Bahnschrift Light SemiCondensed"/>
+        <Border x:Name="Border1" BorderBrush="White" BorderThickness="1" Margin="15,27,0,0" Width="504" Height="658" HorizontalAlignment="Left" VerticalAlignment="Top">
+            <ScrollBar Margin="486,0,-1,-1" ValueChanged="ScrollBar_ValueChanged" Background="Black" Foreground="#FFE01212" BorderBrush="#FF928E8E"/>
         </Border>
-        <Border x:Name="Border2" BorderBrush="Black" BorderThickness="1" Margin="559,36,0,0" Width="444" Height="375" HorizontalAlignment="Left" VerticalAlignment="Top">
-            <TextBox x:Name="consoleOutput2" TextWrapping="Wrap" Background="#FF232121" Foreground="#FFC8C4C4" Margin="-1,-1,-1,-1" Width="444" Height="375"/>
-        </Border>
-        <Button x:Name="StopButton" Content="STOP Server" Margin="789,592,0,0" Click="StopButton_Click" Background="#FFC7C2C2" Width="172" Height="56" HorizontalAlignment="Left" VerticalAlignment="Top" FontSize="24" FontFamily="Bahnschrift Condensed"/>
-        <Image x:Name="amogus" HorizontalAlignment="Left" Height="92" VerticalAlignment="Top" Width="120" Source="/Among-Us-Svg.png" Opacity="0.085" Margin="27,694,0,0"/>
-        <TextBlock HorizontalAlignment="Left" Margin="125,786,0,0" TextWrapping="Wrap" Text="ALPHA BUILD v0.1.9" VerticalAlignment="Top" Height="52" Width="322" FontSize="36"/>
+        <Button x:Name="StopButton" Content="STOP Server" Margin="789,792,0,0" Click="StopButton_Click" Width="112" Height="34" HorizontalAlignment="Left" VerticalAlignment="Top" FontSize="16" FontFamily="Bahnschrift Light Condensed" Foreground="{x:Null}" BorderBrush="Red">
+            <Button.Effect>
+                <DropShadowEffect/>
+            </Button.Effect>
+            <Button.Background>
+                <ImageBrush ImageSource="/STOP BUTTON.png"/>
+            </Button.Background>
+        </Button>
+        <TextBlock x:Name="Version" HorizontalAlignment="Left" Margin="978,787,0,0" TextWrapping="Wrap" Text="ALPHA BUILD v0.2.7" VerticalAlignment="Top" Height="37" Width="226" FontSize="36" FontFamily="Bahnschrift Light Condensed" Foreground="White"/>
+        <TextBlock HorizontalAlignment="Left" Margin="538,6,0,0" TextWrapping="Wrap" Text="Fika Server Settings" VerticalAlignment="Top" Foreground="White" FontSize="16" FontFamily="Bahnschrift Light SemiCondensed"/>
+        <TextBlock HorizontalAlignment="Left" Margin="547,44,0,0" TextWrapping="Wrap" Text="Use BTR?" VerticalAlignment="Top" Foreground="White" FontSize="16" FontFamily="Bahnschrift Light SemiCondensed"/>
+        <RadioButton x:Name="radioYes1" Content="True" HorizontalAlignment="Left" Margin="548,63,0,0" VerticalAlignment="Top" Foreground="White" GroupName="BTR" Checked="radioYes1_Checked" IsChecked="True"/>
+        <RadioButton x:Name="radioNo1" Content="False" HorizontalAlignment="Left" Margin="598,63,0,0" VerticalAlignment="Top" Foreground="White" GroupName="BTR" Checked="radioNo1_Checked"/>
+        <TextBlock HorizontalAlignment="Left" Margin="547,87,0,0" TextWrapping="Wrap" Text="Friendly Fire? (Enabled by default)" VerticalAlignment="Top" Foreground="White" FontSize="16" FontFamily="Bahnschrift Light SemiCondensed"/>
+        <RadioButton x:Name="radioFFOn1" Content="True" HorizontalAlignment="Left" Margin="548,106,0,0" VerticalAlignment="Top" Foreground="Red" GroupName="FriendlyFire" Checked="radioFFOn1_Checked_1" IsChecked="True"/>
+        <RadioButton x:Name="radioFFOff1" Content="False" HorizontalAlignment="Left" Margin="598,106,0,0" VerticalAlignment="Top" Foreground="#FF00FF10" GroupName="FriendlyFire" Checked="radioFFOff1_Checked_1"/>
+        <TextBlock HorizontalAlignment="Left" Margin="547,130,0,0" TextWrapping="Wrap" Text="Use Dynamic Vehicle Extracts?" VerticalAlignment="Top" Foreground="White" FontSize="16" FontFamily="Bahnschrift Light SemiCondensed"/>
+        <RadioButton x:Name="radioYes2" Content="True" HorizontalAlignment="Left" Margin="548,150,0,0" VerticalAlignment="Top" Foreground="White" GroupName="DynamicVehicles" Checked="radioYes2_Checked"/>
+        <RadioButton x:Name="radioNo2" Content="False" HorizontalAlignment="Left" Margin="598,150,0,0" VerticalAlignment="Top" Checked="radioNo2_Checked" Foreground="White" GroupName="DynamicVehicles" IsChecked="True" RenderTransformOrigin="-0.007,0.358"/>
+        <TextBlock HorizontalAlignment="Left" Margin="548,179,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Foreground="White" FontSize="16" FontFamily="Bahnschrift Light SemiCondensed" Text="Allow Free Cam?"/>
+        <RadioButton x:Name="radioYes3" Content="True" HorizontalAlignment="Left" Margin="548,198,0,0" VerticalAlignment="Top" Background="White" Foreground="White" GroupName="FreeCam" Checked="radioYes3_Checked_1"/>
+        <RadioButton x:Name="radioNo3" Content="False" HorizontalAlignment="Left" Margin="598,198,0,0" VerticalAlignment="Top" Foreground="White" GroupName="FreeCam" Checked="radioNo3_Checked_1" IsChecked="True"/>
+        <TextBlock HorizontalAlignment="Center" Margin="0,223,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Foreground="White" FontSize="16" FontFamily="Bahnschrift Light SemiCondensed" Text="Allow Spectator Free Cam?"/>
+        <RadioButton x:Name="radioYes4" Content="True" HorizontalAlignment="Left" Margin="548,242,0,0" VerticalAlignment="Top" Foreground="White" GroupName="SpectatorFreeCam" Checked="radioYes4_Checked"/>
+        <RadioButton x:Name="radioNo4" Content="False" HorizontalAlignment="Left" Margin="598,242,0,0" VerticalAlignment="Top" Foreground="White" GroupName="SpectatorFreeCam" Checked="radioNo4_Checked_1" IsChecked="True"/>
+        <Button x:Name="RestartButton" Content="RESTART Server" HorizontalAlignment="Left" Margin="659,792,0,0" VerticalAlignment="Top" FontFamily="Bahnschrift Light Condensed" Height="34" Width="125" FontSize="16" Click="RestartButton_Click" Foreground="{x:Null}" BorderBrush="#FFFFAF00">
+            <Button.Effect>
+                <DropShadowEffect/>
+            </Button.Effect>
+            <Button.Background>
+                <ImageBrush ImageSource="/RESTART BUTTON.png"/>
+            </Button.Background>
+        </Button>
+        <TextBlock HorizontalAlignment="Left" Margin="548,268,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Foreground="White" FontSize="16" FontFamily="Bahnschrift Light SemiCondensed" Text="Allow Sending Items to Players?"/>
+        <RadioButton x:Name="radioYes5" Content="True" HorizontalAlignment="Left" Margin="548,286,0,0" VerticalAlignment="Top" Foreground="White" GroupName="SendItems" Checked="radioYes5_Checked_1" IsChecked="True"/>
+        <RadioButton x:Name="radioNo5" Content="False" HorizontalAlignment="Left" Margin="598,286,0,0" VerticalAlignment="Top" Foreground="White" GroupName="SendItems" Checked="radioNo5_Checked_1"/>
+        <TextBlock HorizontalAlignment="Left" Margin="547,309,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Foreground="White" FontSize="16" FontFamily="Bahnschrift Light SemiCondensed" Text="Force Inventory Save on Death? (Disabled by default)"/>
+        <RadioButton x:Name="radioYes6" Content="True" HorizontalAlignment="Left" Margin="548,327,0,0" VerticalAlignment="Top" Foreground="Red" GroupName="ForceInventorySave" Checked="radioYes6_Checked_1"/>
+        <RadioButton x:Name="radioNo6" Content="False" HorizontalAlignment="Left" Margin="598,327,0,0" VerticalAlignment="Top" Foreground="#FF13FF00" GroupName="ForceInventorySave" Checked="radioNo6_Checked_1" IsChecked="True"/>
+        <TextBlock HorizontalAlignment="Left" Margin="546,349,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Foreground="White" FontSize="16" FontFamily="Bahnschrift Light Condensed" Text="Use Inertia?"/>
+        <RadioButton x:Name="radioYes7" Content="True" HorizontalAlignment="Left" Margin="548,368,0,0" VerticalAlignment="Top" Foreground="White" GroupName="UseInertia" Checked="radioYes7_Checked_1" IsChecked="True"/>
+        <RadioButton x:Name="radioNo7" Content="False" HorizontalAlignment="Left" Margin="598,368,0,0" VerticalAlignment="Top" Foreground="White" GroupName="UseInertia" Checked="radioNo7_Checked_1"/>
+        <TextBlock HorizontalAlignment="Left" Margin="545,394,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Foreground="White" FontSize="16" FontFamily="Bahnschrift Light SemiCondensed" Text="Players Share Quest Progression?"/>
+        <RadioButton x:Name="radioYes8" Content="True" HorizontalAlignment="Left" Margin="548,0,0,0" VerticalAlignment="Center" Foreground="White" Checked="radioYes8_Checked_1"/>
+        <RadioButton x:Name="radioNo8" Content="False" HorizontalAlignment="Left" Margin="598,0,0,0" VerticalAlignment="Center" Foreground="White" Checked="radioNo8_Checked_1" IsChecked="True"/>
+        <TextBlock HorizontalAlignment="Left" Margin="546,435,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Foreground="White" FontSize="16" FontFamily="Bahnschrift Light SemiCondensed" Text="Allow Players to Edit Raid Settings?"/>
+        <RadioButton x:Name="radioYes9" Content="True" HorizontalAlignment="Left" Margin="547,454,0,0" VerticalAlignment="Top" Foreground="White" GroupName="EditRaidSettings" Checked="radioYes9_Checked_1" IsChecked="True"/>
+        <RadioButton x:Name="radioNo9" Content="False" HorizontalAlignment="Left" Margin="597,454,0,0" VerticalAlignment="Top" Foreground="White" GroupName="EditRaidSettings" Checked="radioNo9_Checked_1"/>
+        <Button x:Name="SaveButton" Content="SAVE CHANGES" HorizontalAlignment="Left" Margin="633,610,0,0" VerticalAlignment="Top" FontFamily="Bahnschrift Light Condensed" FontSize="16" Height="33" Width="156" Click="SaveButton_Click"/>
+        <TextBlock HorizontalAlignment="Left" Margin="607,643,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Foreground="White" TextAlignment="Center" Text="NOTE: You will be asked to confirm the &#xD;&#xA;changes in a pop-up window."/>
+        <Button x:Name="launchScript" Content="LAUNCH SCRIPT" HorizontalAlignment="Left" Margin="138,696,0,0" VerticalAlignment="Top" FontFamily="Bahnschrift Light Condensed" FontSize="16" Height="33" Width="258" Click="launchScript_Click"/>
+        <TextBlock HorizontalAlignment="Left" Margin="38,734,0,0" TextWrapping="Wrap" Text="NOTE: This button launches a PowerShell script that monitors the server and restarts the server once it has crashed. If it has crashed then the counter below will increment by 1. Please check your mods and make sure that there are no conflicts, or they're not out of date. This is likely the case." VerticalAlignment="Top" Foreground="White" Width="458" TextAlignment="Center"/>
+        <TextBox x:Name="crashCount" HorizontalAlignment="Left" Margin="306,808,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="60" Height="20" Background="Black" Foreground="White" Text="" TextChanged="crashCount_TextChanged"/>
+        <TextBlock HorizontalAlignment="Left" Margin="172,808,0,0" TextWrapping="Wrap" Text="SERVER CRASH COUNT:" VerticalAlignment="Top" Foreground="White" FontFamily="Bahnschrift Light Condensed" FontSize="18"/>
 
     </Grid>
 </Window>

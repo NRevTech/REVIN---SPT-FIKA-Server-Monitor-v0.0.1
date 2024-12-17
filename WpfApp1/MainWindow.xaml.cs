@@ -1,39 +1,108 @@
 ﻿using System;
 using System.Diagnostics;
 using System.IO;
-using System.Linq;
-using System.Net.NetworkInformation;
-using System.Text.RegularExpressions;
 using System.Threading.Tasks;
-using System.Timers;
 using System.Windows;
 using System.Windows.Controls;
 using Microsoft.Win32;
 using System.Management.Automation;
-using System.Management.Automation.Runspaces;
-using RSM_Server_Monitor.Properties;
+using RSM_Server_Manager.Properties;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+
+// This code was written and developed by Revin.
+// This software is strictly and ONLY for the Fika Project.
+// Redistribution of this code without consent is disallowed and strictly prohibited.
+// Copying this code is strictly prohibited.
+// Copying this code then publishing it on the SPT mod site is STRICTLY prohibited. 
+// If ANY of this code is used in another program or project then you must reference me at any part, after contacting me and getting my approval to use the code.
+// You are NOT allowed to claim this code, or software, as your own.
+// ssh and Lacyway are goobers to the tenth power.
+// Please join the Project Fika Discord here: https://discord.gg/project-fika
 
 namespace WpfApp1
 {
-    public partial class MainWindow : Window
+    public partial class App : Application
+    {
+        protected override void OnStartup(StartupEventArgs e)
+        {
+            if (!CheckForDotNet8())
+            {
+                MessageBoxResult result = MessageBox.Show(
+                    "This application requires .NET 8.0 or higher to run. Do you want to download it now?",
+                    "Warning",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Warning);
+
+                if (result == MessageBoxResult.Yes)
+                {
+                    Process.Start(new ProcessStartInfo("https://dotnet.microsoft.com/download/dotnet/8.0")
+                    {
+                        UseShellExecute = true
+                    });
+                    Current.Shutdown();
+                }
+                else
+                {
+                    Current.Shutdown();
+                }
+            }
+            else
+            {
+                base.OnStartup(e);
+            }
+        }
+
+        private bool CheckForDotNet8()
+        {
+            try
+            {
+                // Path where .NET runtimes are typically installed
+                string dotnetPath = Environment.GetEnvironmentVariable("ProgramFiles") + @"\dotnet\shared\Microsoft.NETCore.App";
+                if (Directory.Exists(dotnetPath))
+                {
+                    // Check if any version is 8.0.0 or higher
+                    return Directory.GetDirectories(dotnetPath)
+                        .Select(dir => Version.Parse(Path.GetFileName(dir)))
+                        .Any(version => version >= new Version(8, 0, 0));
+                }
+                return false;
+            }
+            catch
+            {
+                return false; // If something goes wrong, assume .NET 8.0 is not installed, or you just suck
+            }
+        }
+    }
+public partial class MainWindow : Window
     {
         private Process? cliProcess;
         private System.Timers.Timer? monitorTimer;
-        private System.Timers.Timer? pingTimer;
-        private PerformanceCounter? cpuCounter;
-        private PerformanceCounter? ramCounter;
-        private long successfulPackets = 0;
-        private long failedPackets = 0;
-        private string serverStatusMessage = "";
+        private int serverCrashCount = 0;
+        private bool serverRunning = false;
+        private string? fikaJsoncPath;
+        private bool hasDisplayedFikaNotFound = false;
 
         public MainWindow()
         {
             InitializeComponent();
             LoadLastPath();
-            SetupCountersAndTimers();
+            SetupTimer();
             this.Topmost = false;
             StartMonitoring();
-            UpdateServerStatusDisplay();
+            DisplayStartupMessage();
+            FindFikaJsonc();
+        }
+
+        private async void DisplayStartupMessage()
+        {
+            if (this.FindName("consoleOutput1") is TextBox textBox)
+            {
+                textBox.AppendText("RSM - Server Monitor\nFor Project Fika\nDeveloped by: Revin\nDecember 2024" + Environment.NewLine);
+                await Task.Delay(7000); // Show message for 7 seconds
+                textBox.Clear();
+                UpdateServerStatusDisplay(); // Display fika.jsonc message after clearing
+            }
         }
 
         private void LoadLastPath()
@@ -44,24 +113,25 @@ namespace WpfApp1
                 : Path.Combine(Directory.GetParent(Directory.GetCurrentDirectory())?.FullName ?? "", "SPT.Server.exe");
         }
 
-        private void SetupCountersAndTimers()
+        private void SetupTimer()
         {
-            cpuCounter = new PerformanceCounter("Process", "% Processor Time", "SPT.Server", true);
-            ramCounter = new PerformanceCounter("Process", "Working Set", "SPT.Server", true);
-
-            monitorTimer = new System.Timers.Timer(1000);
+            monitorTimer = new System.Timers.Timer(1000); // Every second for monitoring
             monitorTimer.Elapsed += MonitorServer;
-
-            pingTimer = new System.Timers.Timer(10000);
-            pingTimer.Elapsed += PingServer;
         }
 
         private void StartButton_Click(object sender, RoutedEventArgs e)
         {
             if (!string.IsNullOrWhiteSpace(pathTextBox.Text))
             {
-                StartCLIApplication();
-                SaveLastPath();
+                if (cliProcess == null || cliProcess.HasExited)
+                {
+                    StartCLIApplication();
+                    SaveLastPath();
+                }
+                else
+                {
+                    MessageBox.Show("Server is already running. Use the Restart button to restart it.");
+                }
             }
             else
             {
@@ -88,6 +158,26 @@ namespace WpfApp1
             if (openFileDialog.ShowDialog() == true)
             {
                 pathTextBox.Text = openFileDialog.FileName;
+                FindFikaJsonc();
+            }
+        }
+
+        private void FindFikaJsonc()
+        {
+            string exeDirectory = Path.GetDirectoryName(pathTextBox.Text) ?? string.Empty;
+            string fikaJsoncSearchPath = Path.Combine(exeDirectory, "user", "mods", "fika-server", "assets", "configs", "fika.jsonc");
+
+            if (File.Exists(fikaJsoncSearchPath))
+            {
+                fikaJsoncPath = fikaJsoncSearchPath;
+                hasDisplayedFikaNotFound = false;
+                UpdateServerStatusDisplay("fika.jsonc has been found.");
+            }
+            else
+            {
+                fikaJsoncPath = null;
+                hasDisplayedFikaNotFound = true;
+                UpdateServerStatusDisplay("fika.jsonc has not been found.");
             }
         }
 
@@ -98,7 +188,7 @@ namespace WpfApp1
                 MessageBox.Show("A process is already running. Please stop it first.");
                 return;
             }
-
+            // Revin was here
             string exePath = pathTextBox.Text;
             string exeDirectory = Path.GetDirectoryName(exePath) ?? "";
 
@@ -125,14 +215,12 @@ namespace WpfApp1
             {
                 cliProcess.Start();
                 SetupProcessEvents();
-                pingTimer?.Start();
-                UpdateServerStatusDisplay();
+                serverRunning = true;
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Failed to start the CLI application: {ex.Message}");
+                MessageBox.Show($"Failed to start the CLI application: {ex.Message}"); // Revin was here
                 cliProcess = null;
-                UpdateServerStatusDisplay();
             }
         }
 
@@ -145,14 +233,15 @@ namespace WpfApp1
             cliProcess!.BeginOutputReadLine();
             cliProcess!.BeginErrorReadLine();
         }
-
+        // Revin was here
         private void CliProcess_OutputDataReceived(object sender, DataReceivedEventArgs e)
         {
-            if (e.Data is not null)
+            if (e.Data != null)
             {
                 Dispatcher.Invoke(() =>
                 {
-                    if (this.FindName("consoleOutput1") is TextBox textBox)
+                    var textBox = this.FindName("consoleOutput1") as TextBox;
+                    if (textBox != null)
                     {
                         textBox.AppendText(SanitizeOutput(e.Data) + Environment.NewLine);
                         textBox.ScrollToEnd();
@@ -160,46 +249,69 @@ namespace WpfApp1
                 });
             }
         }
-
+        // Revin was here
         private void CliProcess_ErrorDataReceived(object sender, DataReceivedEventArgs e)
         {
-            if (e.Data is not null)
+            if (e.Data != null)
             {
                 Dispatcher.Invoke(() =>
                 {
-                    if (this.FindName("consoleOutput1") is TextBox textBox)
+                    var textBox = this.FindName("consoleOutput1") as TextBox;
+                    if (textBox != null)
                     {
-                        textBox.AppendText($"Error: {SanitizeOutput(e.Data)}" + Environment.NewLine);
+                        textBox.AppendText($"Error: {SanitizeOutput(e.Data)}" + Environment.NewLine); // ereh saw niveR
                         textBox.ScrollToEnd();
                     }
                 });
             }
         }
 
-        private string SanitizeOutput(string output)
+        private string SanitizeOutput(string output) // Revin was here
         {
-            return Regex.Replace(output, @"\x1B\[[0-?]*[ -/]*[@-~]", "").Replace("€", "").Replace("â", "").Replace("”", "");
+            return output
+                .Replace("€", "")
+                .Replace("â", "")
+                .Replace("”", "")
+                .Replace("“", "")
+                .Replace("[33m", "")
+                .Replace("[37m", "")
+                .Replace("[39m", "")
+                .Replace("\x1B[0m", "")
+                .Replace("\x1B[1m", "")
+                .Replace("\x1B[32m", "")
+                .Replace("\x1B[31m", "")
+                .Replace(",", "")
+                .Replace("[2J", "")
+                .Replace("[0;0f", "")
+                .Replace("Œ", "")
+                .Replace("\x1B‚", "")
+                .Replace("‚", "")
+                .Replace("\x1B", "")
+                .Replace("˜", "");
         }
 
-        private async Task StopCLIApplication()
+        private async Task StopCLIApplication() // Revin was here
         {
             if (cliProcess != null && !cliProcess.HasExited)
             {
                 try
                 {
                     cliProcess.Kill();
-                    await WaitForExitAsync(cliProcess);
-                    MessageBox.Show("SPT Server has terminated successfully. It is now safe to close this application.");
+                    await Task.Run(() => cliProcess.WaitForExit());
                     cliProcess = null;
+                    serverRunning = false;
                 }
                 catch (Exception ex)
                 {
-                    MessageBox.Show($"Failed to stop the CLI application: {ex.Message}");
+                    Dispatcher.Invoke(() =>
+                    {
+                        var textBox = this.FindName("consoleOutput1") as TextBox;
+                        if (textBox != null)
+                        {
+                            textBox.AppendText($"Error stopping server: {SanitizeOutput(ex.Message)}" + Environment.NewLine); // ereh saw niveR
+                        }
+                    });
                 }
-            }
-            else
-            {
-                MessageBox.Show("No CLI application is running to stop.");
             }
         }
 
@@ -208,102 +320,265 @@ namespace WpfApp1
             Dispatcher.Invoke(() =>
             {
                 cliProcess = null;
-                successfulPackets = failedPackets = 0;
-                serverStatusMessage = "The SPT-Fika Server has crashed and will be restarted. Please check your mods for any conflicts.";
-                UpdateServerStatusDisplay();
+                serverRunning = false;
+                // Increment crash count only if the exit was unexpected
+                if (serverRunning) // Revin, remember, since serverRunning was true before exiting, this indicates an unexpected exit 
+                {
+                    serverCrashCount++;
+                    crashCount.Text = serverCrashCount.ToString(); // Update crash count display (got this idea from the Krillin kill count)
+                }
             });
         }
-
-        private Task WaitForExitAsync(Process process) => Task.Run(() => process.WaitForExit());
 
         private void StartMonitoring() => monitorTimer?.Start();
 
-        private void MonitorServer(object sender, ElapsedEventArgs e)
+        private void MonitorServer(object? sender, System.Timers.ElapsedEventArgs e)
         {
             Dispatcher.Invoke(() =>
             {
-                if (cliProcess == null || cliProcess.HasExited || cpuCounter == null || ramCounter == null) return;
+                if (cliProcess == null || cliProcess.HasExited) return;
 
-                float cpu = cpuCounter.NextValue() / Environment.ProcessorCount;
-                float ram = ramCounter.NextValue();
-                double ramUsage = (ram / (Environment.WorkingSet * 1024.0)) * 100;
-
-                string metrics = $"CPU Usage: {cpu:F2}%\nRAM Usage: {Math.Min(ramUsage, 100):F2}%\nNet Usage: {cpu:F2}%\n\nSuccessful Packets Sent: {successfulPackets}\nFailed Packets: {failedPackets}";
-
-                _ = Task.Run(async () =>
-                {
-                    string webResponse = await GetWebResponseAsync();
-                    metrics += "\n==========\n" + webResponse;
-                    Dispatcher.Invoke(() => UpdateServerStatusDisplay(metrics));
-                });
+                // Do nothing here as you (Revin) are not updating consoleOutput1 with these messages anymore (womp womp)
             });
-        }
-
-        private void PingServer(object sender, ElapsedEventArgs e)
-        {
-            if (cliProcess != null && !cliProcess.HasExited)
-            {
-                var pingSender = new Ping();
-                var reply = pingSender.Send("8.8.8.8", 1000);
-                if (reply.Status == IPStatus.Success)
-                {
-                    successfulPackets++;
-                }
-                else
-                {
-                    failedPackets++;
-                }
-            }
-        }
-
-        private async Task<string> GetWebResponseAsync()
-        {
-            try
-            {
-                using (var runspace = RunspaceFactory.CreateRunspace())
-                {
-                    runspace.Open();
-                    using (var ps = PowerShell.Create())
-                    {
-                        ps.Runspace = runspace;
-                        ps.AddScript(@"Invoke-WebRequest -Headers @{""responsecompressed""=""0""} -Method ""GET"" ""http://26.61.37.157:6969/fika/presence/get""");
-                        var results = await ps.InvokeAsync().ConfigureAwait(false);
-
-                        if (ps.HadErrors)
-                        {
-                            var errors = ps.Streams.Error.ReadAll();
-                            return $"Error fetching data: {string.Join(", ", errors.Select(e => e.Exception.Message))}";
-                        }
-                        return results[0]?.BaseObject?.ToString() ?? "No response received";
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                return $"General Error: {ex.Message}";
-            }
         }
 
         private void UpdateServerStatusDisplay(string metrics = "")
         {
             Dispatcher.Invoke(() =>
             {
-                if (this.FindName("consoleOutput2") is TextBox textBox)
+                var textBox = this.FindName("consoleOutput1") as TextBox;
+                if (textBox != null)
                 {
-                    textBox.Text = (cliProcess == null || cliProcess.HasExited ? "The SPT-Fika Server is not running." : "The SPT-Fika Server is currently running.")
-                                    + "\n\n" + metrics;
+                    textBox.AppendText(metrics + Environment.NewLine);
+                    textBox.ScrollToEnd(); // Make DAMN sure the text box scrolls to the bottom to show new messages
                 }
             });
         }
 
         private void SaveLastPath() => Settings.Default.LastPath = pathTextBox.Text;
 
-        private void consoleOutput1_TextChanged(object sender, TextChangedEventArgs e)
+        private void consoleOutput1_TextChanged(object sender, TextChangedEventArgs e) { }
+
+        private void TextBox_TextChanged(object sender, TextChangedEventArgs e) { }
+
+        protected override void OnClosed(EventArgs e)
+        {
+            base.OnClosed(e);
+            if (cliProcess != null && !cliProcess.HasExited)
+            {
+                cliProcess.Kill();
+                cliProcess.WaitForExit();
+            }
+        }
+
+        private async void RestartButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (cliProcess != null && !cliProcess.HasExited)
+            {
+                try
+                {
+                    await StopCLIApplication();
+                    // Note: No crash count increment here since this is an intentional restart
+                    StartCLIApplication();
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"An error occurred while restarting the server: {ex.Message}");
+                }
+            }
+            else
+            {
+                MessageBox.Show("No server is running to restart.");
+            }
+        }
+
+        private void SaveButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (string.IsNullOrEmpty(fikaJsoncPath))
+            {
+                MessageBox.Show("fika.jsonc file path not set. Please ensure the server path is correct.");
+                return;
+            }
+
+            try
+            {
+                // // ereh saw niveR
+                string oldPath = Path.Combine(Path.GetDirectoryName(fikaJsoncPath), "fika.jsonc.old");
+                if (File.Exists(fikaJsoncPath))
+                {
+                    if (File.Exists(oldPath))
+                    {
+                        File.Delete(oldPath); // Delete old backup if it exists
+                    }
+                    File.Move(fikaJsoncPath, oldPath);
+                }
+
+                // ereh saw niveR
+                JObject newJsonData = JObject.Parse(File.ReadAllText(oldPath));  // Read from the backup
+
+                // // ereh saw niveR
+                var clientSettings = (JObject)newJsonData["client"];
+                if (clientSettings != null)
+                {
+                    clientSettings["useBtr"] = radioYes1.IsChecked ?? false;
+                    clientSettings["friendlyFire"] = radioFFOn1.IsChecked ?? false;
+                    clientSettings["dynamicVExfils"] = radioYes2.IsChecked ?? false;
+                    clientSettings["allowFreeCam"] = radioYes3.IsChecked ?? false;
+                    clientSettings["allowSpectateFreeCam"] = radioYes4.IsChecked ?? false;
+                    clientSettings["allowItemSending"] = radioYes5.IsChecked ?? false;
+                    clientSettings["forceSaveOnDeath"] = radioYes6.IsChecked ?? false;
+                    clientSettings["useInertia"] = radioYes7.IsChecked ?? false;
+                    clientSettings["sharedQuestProgression"] = radioYes8.IsChecked ?? false;
+                    clientSettings["canEditRaidSettings"] = radioYes9.IsChecked ?? false;
+                }
+                else
+                {
+                    MessageBox.Show("Error: 'client' section not found in JSON.");
+                    return;
+                }
+
+                // // ereh saw niveR
+                string jsonToWrite = JsonConvert.SerializeObject(newJsonData, Formatting.Indented);
+                File.WriteAllText(fikaJsoncPath, jsonToWrite);
+
+                MessageBox.Show("fika.jsonc has been updated with new settings, old file backed up as fika.jsonc.old.");
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"An error occurred: {ex.Message}");
+            }
+        }
+
+        private string StripComments(string json) // oo lala ;D    8=====>
+        {
+            return System.Text.RegularExpressions.Regex.Replace(json, @"//.*|/*[\s\S]*?*/", string.Empty);
+        }
+
+        private void launchScript_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var startInfo = new ProcessStartInfo
+                {
+                    FileName = "powershell.exe",
+                    Arguments = "-ExecutionPolicy Bypass -File \"RSM Script1.ps1\"",
+                    Verb = "runas", // Run as administrator
+                    UseShellExecute = true // Needed to start process with elevated privileges
+                };
+                Process.Start(startInfo);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error launching script: {ex.Message}"); // c=====8
+            }
+        }
+
+        private void crashCount_TextChanged(object sender, TextChangedEventArgs e)
+        { 
+        
+        }
+
+        private void radioYes1_Checked(object sender, RoutedEventArgs e)
         {
 
         }
 
-        private void TextBox_TextChanged(object sender, TextChangedEventArgs e)
+        private void radioNo1_Checked(object sender, RoutedEventArgs e)
+        {
+
+        }
+        // c=====8
+        private void radioFFOn1_Checked_1(object sender, RoutedEventArgs e)
+        {
+
+        }
+
+        private void radioFFOff1_Checked_1(object sender, RoutedEventArgs e)
+        {
+
+        }
+        // c=====8
+        private void radioYes2_Checked(object sender, RoutedEventArgs e)
+        {
+
+        }
+        // c=====8
+        private void radioNo2_Checked(object sender, RoutedEventArgs e)
+        {
+
+        }
+        // c=====8
+        private void radioYes3_Checked_1(object sender, RoutedEventArgs e)
+        {
+
+        }
+
+        private void radioNo3_Checked_1(object sender, RoutedEventArgs e)
+        {
+
+        }
+        // c=====8
+        private void radioYes4_Checked(object sender, RoutedEventArgs e)
+        {
+
+        }
+
+        private void radioNo4_Checked_1(object sender, RoutedEventArgs e)
+        {
+
+        }
+
+        private void radioYes5_Checked_1(object sender, RoutedEventArgs e)
+        {
+
+        }
+
+        private void radioNo5_Checked_1(object sender, RoutedEventArgs e)
+        {
+
+        }
+
+        private void radioYes6_Checked_1(object sender, RoutedEventArgs e)
+        {
+
+        }
+
+        private void radioNo6_Checked_1(object sender, RoutedEventArgs e)
+        {
+
+        }
+
+        private void radioYes7_Checked_1(object sender, RoutedEventArgs e)
+        {
+
+        }
+
+        private void radioNo7_Checked_1(object sender, RoutedEventArgs e)
+        {
+
+        }
+
+        private void radioYes8_Checked_1(object sender, RoutedEventArgs e)
+        {
+
+        }
+
+        private void radioNo8_Checked_1(object sender, RoutedEventArgs e)
+        {
+
+        }
+
+        private void radioYes9_Checked_1(object sender, RoutedEventArgs e)
+        {
+
+        }
+        // c=====8
+        private void radioNo9_Checked_1(object sender, RoutedEventArgs e)
+        {
+
+        }
+
+        private void ScrollBar_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
         {
 
         }
